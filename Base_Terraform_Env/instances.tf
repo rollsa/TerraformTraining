@@ -1,7 +1,3 @@
-data "aws_ssm_parameter" "amzn2_linux" {
-  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
-}
-
 resource "tls_private_key" "key" {
 algorithm = "RSA"
 }
@@ -18,10 +14,19 @@ public_key = tls_private_key.key.public_key_openssh
 }
 
 resource "aws_instance" "etl-ec2-instance" {
-  ami = nonsensitive(data.aws_ssm_parameter.amzn2_linux.value)
+  ami = "ami-0eb260c4d5475b901"
   instance_type = var.ec2_instance_size
   key_name = "TEST"
   security_groups = [aws_security_group.ingress-all-dstate-dev.id]
 tags = local.common_tags
 subnet_id = aws_subnet.subnet-dsate.id
+user_data = <<EOF
+#! /bin/bash
+sudo apt update
+sudo apt install python3 -y
+sudo apt install pip -y
+export AIRFLOW_HOME=~/airflow
+pip install "apache-airflow==2.6.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.10.txt"
+airflow standalone
+EOF
 }
